@@ -77,15 +77,11 @@ scores = cross_val_score(
 
 X_test = pd.read_parquet("data/final_test.parquet")
 
-pipe.predict(X_test)
-result = pipe.predict(X_test)
-
-output = pd.DataFrame({
-    'log_bike_count': result
-})
-
-output.index.name = "Id"
-
-output.to_csv('output.csv')
-
-print("result.csv")
+y_pred = pipe.predict(X_test)
+results = pd.DataFrame(
+    dict(
+        Id=np.arange(y_pred.shape[0]),
+        log_bike_count=y_pred,
+    )
+)
+results.to_csv("submission.csv", index=False)
