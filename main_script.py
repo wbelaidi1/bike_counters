@@ -6,9 +6,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import sklearn
 
-print("hello")
-
 data = pd.read_parquet("data/train.parquet")
+
+_target_column_name = "log_bike_count"
 
 def _encode_dates(X):
     X = X.copy()  # modify a copy of X
