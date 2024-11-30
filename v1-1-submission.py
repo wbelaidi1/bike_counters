@@ -100,10 +100,10 @@ preprocessor = ColumnTransformer(
 #}
 
 params = {
-    'max_depth': 3,
-    'learning_rate': 0.1,
-    'min_samples_split': 4,
-    'n_estimators': 200
+    'max_depth': 10,
+    'learning_rate': 0.05,
+    'min_samples_split': 5,
+    'n_estimators': 500
 }
 
 from sklearn import ensemble
