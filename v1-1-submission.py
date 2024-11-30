@@ -50,7 +50,7 @@ def _merge_external_data(X):
     # When using merge_asof left frame need to be sorted
     X["orig_index"] = np.arange(X.shape[0])
     X = pd.merge_asof(
-        X.sort_values("date"), df_ext[["date", "t", "rr1", "rr3", "etat_sol", "rr12", "rr6", "ff"]].sort_values("date"), on="date"
+        X.sort_values("date"), df_ext[["date", "t", "rr3", "etat_sol", "ff"]].sort_values("date"), on="date"
     )
     # Sort back to the original order
     X = X.sort_values("orig_index")
@@ -90,7 +90,7 @@ date_cols = _encode_dates(X_train[["date"]]).columns.tolist()
 
 categorical_encoder = OneHotEncoder(handle_unknown="ignore")
 categorical_cols = ["counter_name", "site_name"]
-numerical_cols = ["t", "rr3", "ff", "rr1", "rr6", "rr12"]
+numerical_cols = ["t", "rr3", "ff"]
 
 preprocessor = ColumnTransformer(
     [
@@ -101,8 +101,8 @@ preprocessor = ColumnTransformer(
 )
 
 #regressor = ensemble.GradientBoostingRegressor(**params)
-#regressor = LinearRegression()
-regressor = linear_model.Lasso(alpha=0.1)
+regressor = LinearRegression()
+#regressor = linear_model.Lasso(alpha=0.05)
 
 pipe = make_pipeline(date_encoder, preprocessor, regressor)
 pipe.fit(X, y)
