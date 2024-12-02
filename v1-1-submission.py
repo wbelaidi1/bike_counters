@@ -17,20 +17,28 @@ def _encode_dates(X):
     X["day"] = X["date"].dt.day
     X["weekday"] = X["date"].dt.weekday
     X["hour"] = X["date"].dt.hour
+    X["monday_morning"] = ((X["weekday"] == 0) & (X["hour"].isin([7, 8, 9]))).astype(int)
+    X["monday_lunch"] = ((X["weekday"] == 0) & (X["hour"].isin([7, 8, 9]))).astype(int)
+    X["monday_evening"] = ((X["weekday"] == 0) & (X["hour"].isin([16, 17, 18]))).astype(int)
+    X["tuesday_morning"] = ((X["weekday"] == 1) & (X["hour"].isin([7, 8, 9]))).astype(int)
+    X["tuesday_evening"] = ((X["weekday"] == 1) & (X["hour"].isin([17, 18, 19]))).astype(int)
+    X["wednesday_morning"] = ((X["weekday"] == 2) & (X["hour"].isin([7, 8, 9]))).astype(int)
+    X["wednesday_evening"] = ((X["weekday"] == 2) & (X["hour"].isin([17, 18, 19]))).astype(int)
+    X["thursday_morning"] = ((X["weekday"] == 3) & (X["hour"].isin([7, 8, 9]))).astype(int)
+    X["thursday_evening"] = ((X["weekday"] == 3) & (X["hour"].isin([17, 18, 19]))).astype(int)
+    X["friday_morning"] = ((X["weekday"] == 4) & (X["hour"].isin([7, 8, 9]))).astype(int)
+    X["friday_evening"] = ((X["weekday"] == 4) & (X["hour"].isin([17, 18, 19]))).astype(int)
+    X["saturday_afternoon"] = ((X["weekday"] == 5) & (X["hour"].isin([14, 15, 16]))).astype(int)
+    X["sunday_afternoon"] = ((X["weekday"] == 6) & (X["hour"].isin([14, 15, 16]))).astype(int)
+    X["is_holiday"] = (X["month"] == 8)
     JF = pd.to_datetime(['2021-01-01', '2021-04-05', '2021-05-01', '2021-05-08',
                '2021-05-13', '2021-05-24', '2021-07-14', '2021-08-15',
                '2021-11-01', '2021-11-11', '2021-12-25', '2020-01-01',
                '2020-04-13', '2020-05-01', '2020-05-08', '2020-05-21',
                '2020-06-01', '2020-07-14', '2020-08-15', '2020-11-01',
                '2020-11-11', '2020-12-25']).astype('datetime64[us]')
-    X["ferie"] = X["date"].isin(JF)
-    
-    X["morning"] = X["hour"].isin([7, 8, 9])
-    X["afternoon"] = X["hour"].isin([16, 17, 18])
-    X["spring"] = X["month"].isin([3,4,5])
-    X["summer"] = X["month"].isin([6,7,8])
-    X["automn"] = X["month"].isin([9,10,11])
-    X["winter"] = X["month"].isin([12,1,2])   
+    X["ferie"] = X["date"].isin(JF)   
+        
 
     # Finally we can drop the original columns from the dataframe
     return X
@@ -98,10 +106,10 @@ preprocessor = ColumnTransformer(
 
 
 params = {
-    'max_depth': 6,
-    'learning_rate': 0.2,
+    'max_depth': 8,
+    'learning_rate': 0.1,
     'min_samples_split': 5,
-    'n_estimators': 500
+    'n_estimators': 800
 }
 
 from sklearn import ensemble
@@ -109,7 +117,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn import linear_model
 
 # ensemble.GradientBoostingRegressor(**params)
-regressor = ensemble.GradientBoostingRegressor()
+regressor = ensemble.GradientBoostingRegressor(**params)
 
 # Create pipeline
 pipe = make_pipeline(date_encoder, preprocessor, regressor)
