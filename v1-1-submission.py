@@ -1,3 +1,4 @@
+# %% [code]
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor
@@ -37,9 +38,10 @@ def _encode_dates(X):
 def get_train_data(path="/kaggle/input/msdb-2024/train.parquet"):
     data = pd.read_parquet(path)
     data = data.sort_values(["date", "counter_name"])
-    y_array = data["log_bike_count"].values
-    X_df = data.drop(["log_bike_count", "bike_count"], axis=1)
-    return X_df, y_array
+    #y_array = data["log_bike_count"].values
+    #X_df = data.drop(["log_bike_count", "bike_count"], axis=1)
+    #return X_df, y_array
+    return data
 
 def _merge_external_data(X):
     df_ext = pd.read_csv("/kaggle/input/external-data/external_data.csv", parse_dates=["date"])
@@ -68,11 +70,15 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import StandardScaler
 
 # Load and preprocess data
-X, y = get_train_data()
-X = _merge_external_data(X)
+data = get_train_data()
+mask = (data["date"] > pd.to_datetime("2021/08/01"))
+data = data[mask]
+y = data["log_bike_count"].values
+X = data.drop(["log_bike_count", "bike_count"], axis=1)
+X_train = _merge_external_data(X)
 
 # Temporal train-test split
-X_train, y_train, X_valid, y_valid = train_test_split_temporal(X, y)
+#X_train, y_train, X_valid, y_valid = train_test_split_temporal(X, y)
 
 # Prepare preprocessing steps
 date_encoder = FunctionTransformer(_encode_dates)
@@ -90,18 +96,10 @@ preprocessor = ColumnTransformer(
     ]
 )
 
-# Define parameter grid with pipeline-compatible parameter names
-#param_grid = {
-#    "gradientboostingregressor__n_estimators": [50, 100, 200],
-#    "gradientboostingregressor__max_depth": [2, 3, 4],
-#    "gradientboostingregressor__min_samples_split": [2, 3, 4],
-#    "gradientboostingregressor__learning_rate": [0.01, 0.1],
-#    "gradientboostingregressor__loss": ["squared_error"]
-#}
 
 params = {
-    'max_depth': 10,
-    'learning_rate': 0.05,
+    'max_depth': 6,
+    'learning_rate': 0.2,
     'min_samples_split': 5,
     'n_estimators': 500
 }
@@ -110,26 +108,14 @@ from sklearn import ensemble
 from sklearn.linear_model import LinearRegression
 from sklearn import linear_model
 
-ensemble.GradientBoostingRegressor(**params)
+# ensemble.GradientBoostingRegressor(**params)
+regressor = ensemble.GradientBoostingRegressor()
 
 # Create pipeline
-pipe = make_pipeline(date_encoder, preprocessor, GradientBoostingRegressor())
+pipe = make_pipeline(date_encoder, preprocessor, regressor)
 
-# Set up RandomizedSearchCV
-#random_search = RandomizedSearchCV(
-#    estimator=pipe,
-#    param_distributions=param_grid,
-#    n_iter=10,  # Number of random combinations to try
-#    scoring="neg_mean_squared_error",
-#    cv=3,  # Cross-validation folds
-#    verbose=2,
-#    random_state=42,
-#)
+pipe.fit(X_train, y)
 
-# Fit the RandomizedSearchCV
-pipe.fit(X, y)
-
-from sklearn.metrics import mean_squared_error
 
 X_test = pd.read_parquet("/kaggle/input/msdb-2024/final_test.parquet")
 
@@ -144,11 +130,13 @@ results = pd.DataFrame(
 )
 results.to_csv("/kaggle/working/submission.csv", index=False)
 
-print(results.head())
+print(y_pred[0])
+
+# print(results.head())
 
 # Best parameters and score
-#print("Best Parameters:", random_search.best_params_)
-#print("Best Negative MSE Score:", random_search.best_score_)
+# print("Best Parameters:", random_search.best_params_)
+# print("Best Negative MSE Score:", random_search.best_score_)
 
 # Optional: Evaluate on validation set
 #from sklearn.metrics import mean_squared_error
