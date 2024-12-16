@@ -7,64 +7,35 @@ import matplotlib.pyplot as plt
 import datetime
 from pathlib import Path
 import holidays
-
-import utils
 _target_column_name = "log_bike_count"
 
 def get_data():
-    # Define the starting directory (e.g., current directory)
-    file_name = "train.parquet"
-    start_dir = Path(".")  # Current directory
+     # Load the Parquet file into a pandas DataFrame
+    df = pd.read_parquet("/kaggle/input/msdb-2024/train.parquet")  # Use the found file path
 
-    # Search for the specific file
-    parquet_file = next(start_dir.rglob(file_name), None)
-
-    if parquet_file:
-        print(f"Loading file: {parquet_file}")
-        
-        # Load the Parquet file into a pandas DataFrame
-        df = pd.read_parquet(parquet_file)  # Use the found file path
-
-        # y_array = df["log_bike_count"].values
-        # X_df = df[["date", "counter_name"]]
-        df = df[["date", "counter_name", "bike_count", "log_bike_count"]]
-        return df
-    else:
-        print(f"File '{file_name}' not found in the directory.")
+    df = df[["date", "counter_name", "bike_count", "log_bike_count"]]
+    return df
 
 
 def merge_ext_data(X):
-    # Define the starting directory (e.g., current directory)
-    file_name = "external_data.csv"
-    start_dir = Path(".")  # Current directory
+    df_ext = pd.read_csv("/kaggle/input/msdb-2024/external_data.csv")  # Use the found file path
+    df_ext = df_ext.fillna(0)
+    df_ext["date"] = df_ext["date"].astype('datetime64[us]')
+    X = X.copy()
+    X["orig_index"] = np.arange(X.shape[0])
+    X = pd.merge_asof(
+    X.sort_values("date"), df_ext[["date", "t", "etat_sol", 'rr1', 'rr12', "ff", "ht_neige" ]].sort_values("date"), on="date")
+    X = X.sort_values("orig_index")
+    X["rr1"] = abs(X["rr1"])
+    X["rr3"] = abs(X["rr12"])
+    del X["orig_index"]
 
-    # Search for the specific file
-    csv_file = next(start_dir.rglob(file_name), None)
-
-    if csv_file:
-        print(f"Loading file: {csv_file}")
-        
-        # Load the Parquet file into a pandas DataFrame
-        df_ext = pd.read_csv(csv_file)  # Use the found file path
-        df_ext = df_ext.fillna(0)
-        df_ext["date"] = df_ext["date"].astype('datetime64[us]')
-        X = X.copy()
-        X["orig_index"] = np.arange(X.shape[0])
-        X = pd.merge_asof(
-        X.sort_values("date"), df_ext[["date", "t", "etat_sol", 'rr1', 'rr12', "ff", "ht_neige" ]].sort_values("date"), on="date")
-        X = X.sort_values("orig_index")
-        X["rr1"] = abs(X["rr1"])
-        X["rr3"] = abs(X["rr12"])
-        del X["orig_index"]
-
-        df_expanded = X.loc[X.index.repeat(3)].reset_index(drop=True)
-        # Add hourly intervals to the timestamp
-        df_expanded["date"] += pd.to_timedelta(df_expanded.groupby(df_expanded.index // 3).cumcount(), unit="h")
-        # Sort by timestamp
-        df_expanded = df_expanded.sort_values("date").reset_index(drop=True)
-        return X
-    else:
-        print(f"File '{file_name}' not found in the directory.")
+    df_expanded = X.loc[X.index.repeat(3)].reset_index(drop=True)
+    # Add hourly intervals to the timestamp
+    df_expanded["date"] += pd.to_timedelta(df_expanded.groupby(df_expanded.index // 3).cumcount(), unit="h")
+    # Sort by timestamp
+    df_expanded = df_expanded.sort_values("date").reset_index(drop=True)
+    return X
 
 
 # Fonction pour définir les périodes de confinement
@@ -114,8 +85,6 @@ def train_test_split_temporal(X, y, delta_threshold="30 days"):
     y_train, y_valid = y[mask], y[~mask]
     return X_train, y_train, X_valid, y_valid
 
-X_train, y_train, X_valid, y_valid = train_test_split_temporal(X, y)
-
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
@@ -164,6 +133,8 @@ regressor = xgb.XGBRegressor(**param)
 
 pipe = make_pipeline(date_encoder, preprocessor, regressor)
 
+X_train, y_train, X_valid, y_valid = train_test_split_temporal(X, y)
+
 pipe.fit(X_train, y_train)
 
 from sklearn.model_selection import TimeSeriesSplit, cross_val_score
@@ -171,6 +142,7 @@ from sklearn.metrics import mean_squared_error
 
 
 X_test = pd.read_parquet("/kaggle/input/msdb-2024/final_test.parquet")
+X_test = merge_ext_data(X_test)
 
 y_pred = pipe.predict(X_test)
 results = pd.DataFrame(

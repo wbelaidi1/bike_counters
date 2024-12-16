@@ -24,4 +24,13 @@ def get_train_data(path="data/train.parquet"):
     data = data.sort_values(["date", "counter_name"])
     y_array = data[_target_column_name].values
     X_df = data.drop([_target_column_name, "bike_count"], axis=1)
+    X_df = X_df[["date", "counter_name"]]
     return X_df, y_array
+
+
+def train_test_split_temporal(X, y, delta_threshold="30 days"):
+    cutoff_date = X["date"].max() - pd.Timedelta(delta_threshold)
+    mask = (X["date"] <= cutoff_date)
+    X_train, X_valid = X.loc[mask], X.loc[~mask]
+    y_train, y_valid = y[mask], y[~mask]
+    return X_train, y_train, X_valid, y_valid
